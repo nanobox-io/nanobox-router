@@ -6,7 +6,7 @@ import "time"
 func main() {
   log := lumber.NewConsoleLogger(lumber.INFO)
 
-  r := router.New(80, nil)
+  r := router.New(80, log)
   r.SetTarget("http://drawception.com")
   r.Start()
   log.Info("start")
