@@ -1,6 +1,6 @@
 package main
 
-import "github.com/nanobox-tools/router"
+import "github.com/nanobox-core/router"
 import "github.com/jcelliott/lumber"
 import "time"
 func main() {
