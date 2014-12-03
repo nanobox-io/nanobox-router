@@ -5,9 +5,9 @@ import (
   "net/http"
   "io/ioutil"
   "strconv"
+  "strings"
 
 )
-
 
 type Logger interface {
   Fatal(string, ...interface{})
@@ -28,8 +28,8 @@ func (d DevNullLogger) Trace(thing string,v ...interface{}) {}
 
 type Router struct {
   log Logger
-  Target string
-  Port   int
+  Targets map[string]string
+  Port    int
 
 }
 
@@ -41,7 +41,7 @@ func New(port int, log Logger) *Router {
   return &Router{
     log: log,
     Port: port,
-
+    Targets: make(map[string]string),
   }
 }
 
@@ -49,20 +49,23 @@ func New(port int, log Logger) *Router {
 func (r *Router) Start() {
   go func () {
     r.log.Info(strconv.Itoa(r.Port))
-    r.log.Info(r.Target)
     pHandler := http.HandlerFunc(r.report)
-    http.ListenAndServe("localhost:"+strconv.Itoa(r.Port), pHandler)
+    http.ListenAndServe("0.0.0.0:"+strconv.Itoa(r.Port), pHandler)
   }()
 }
 
-func (r *Router) SetTarget(target string) {
-  r.Target = target
+func (r *Router) AddTarget(path, target string) {
+  r.Targets[path] = target
+}
+
+func (r *Router) RemoveTarget(path, target string) {
+  delete(r.Targets, path)
 }
 
 
 func (r *Router)report(w http.ResponseWriter, req *http.Request){
 
-  uri := r.Target+req.RequestURI
+  uri := r.findTarget(req.RequestURI)+req.RequestURI
 
   r.log.Info(req.Method + ": " + uri)
 
@@ -94,7 +97,7 @@ func (r *Router)report(w http.ResponseWriter, req *http.Request){
   w.Write(body)
 }
 
-func (r *Router)fatal(err error) {
+func (r *Router) fatal(err error) {
   if err != nil {
     r.log.Fatal(err.Error())
   }
@@ -107,3 +110,18 @@ func copyHeader(source http.Header, dest *http.Header){
       }
   }
 }
+
+func (r *Router) findTarget(path string) string {
+  r.log.Info(path)
+  if tar, ok := r.Targets[path]; ok {
+    r.log.Info(tar)
+    return tar
+  } else {
+    if path == "/" {
+      return ""
+    }
+    arr := strings.Split(path, "/")
+    return r.findTarget(strings.Join(arr[:len(arr)-2], "/")+"/")
+  }
+}
+
