@@ -34,7 +34,6 @@ type Router struct {
 }
 
 // New creates a new router sets its logger and returns a pointer to the Router object
-
 func New(port int, log Logger) *Router {
   if log == nil {
     log = DevNullLogger(0)
