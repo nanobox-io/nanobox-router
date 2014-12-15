@@ -5,6 +5,7 @@ import (
   "net/http"
   "io/ioutil"
   "strconv"
+  "errors"
   "strings"
 )
 
@@ -17,14 +18,6 @@ type Logger interface {
   Trace(string, ...interface{})
 }
 
-type DevNullLogger int8
-func (d DevNullLogger) Fatal(thing string,v ...interface{}) {}
-func (d DevNullLogger) Error(thing string,v ...interface{}) {}
-func (d DevNullLogger) Warn(thing string,v ...interface{}) {}
-func (d DevNullLogger) Info(thing string,v ...interface{}) {}
-func (d DevNullLogger) Debug(thing string,v ...interface{}) {}
-func (d DevNullLogger) Trace(thing string,v ...interface{}) {}
-
 // Router is the device by which you create routing rules
 type Router struct {
   log Logger
@@ -34,9 +27,9 @@ type Router struct {
 }
 
 // New creates a new router sets its logger and returns a pointer to the Router object
-func New(port int, log Logger) *Router {
+func New(port int, log Logger) *Router, error {
   if log == nil {
-    log = DevNullLogger(0)
+    return nil, errors.New("Cannot create a new Logtap without a logger")
   }
   return &Router{
     log: log,
