@@ -23,13 +23,12 @@ type Router struct {
   log Logger
   Targets map[string]string
   Port    int
-
 }
 
 // New creates a new router sets its logger and returns a pointer to the Router object
 func New(port int, log Logger) *Router, error {
   if log == nil {
-    return nil, errors.New("Cannot create a new Logtap without a logger")
+    return nil, errors.New("Cannot create a new Router without a logger")
   }
   return &Router{
     log: log,
