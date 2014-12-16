@@ -1,3 +1,2 @@
-gom "github.com/nanobox-tools/router"
 gom "github.com/jcelliott/lumber"
 gom "github.com/nanobox-core/hatchet"
