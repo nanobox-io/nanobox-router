@@ -10,7 +10,7 @@ func main() {
 	r := router.New(80, log)
 	r.AddTarget("/", "http://drawception.com")
 	r.AddTarget("/category/", "http://macmagazine.com.br")
-	r.Start()
+
 	log.Info("start")
 	time.Sleep(100 * time.Second)
 	log.Info("why")
