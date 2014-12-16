@@ -20,11 +20,13 @@ func New(port int, log hatchet.Logger) *Router {
 	if log == nil {
 		log = hatchet.DevNullLogger{}
 	}
-	return &Router{
-		log:     log,
-		Port:    port,
-		Targets: make(map[string]string),
-	}
+  r := &Router{
+    log:     log,
+    Port:    port,
+    Targets: make(map[string]string),
+  }
+  r.Start()
+	return r
 }
 
 // Start fires up the http listener and routes traffic to your targets
@@ -33,7 +35,7 @@ func New(port int, log hatchet.Logger) *Router {
 func (r *Router) Start() {
 	go func() {
 		r.log.Info(strconv.Itoa(r.Port))
-		pHandler := http.HandlerFunc(r.report)
+		pHandler := http.HandlerFunc(r.proxy)
 		http.ListenAndServe("0.0.0.0:"+strconv.Itoa(r.Port), pHandler)
 	}()
 }
@@ -49,8 +51,8 @@ func (r *Router) RemoveTarget(path string) {
 	delete(r.Targets, path)
 }
 
-// report is the http handler that does the all the real routing work
-func (r *Router) report(w http.ResponseWriter, req *http.Request) {
+// proxy is the http handler that does the all the real routing work
+func (r *Router) proxy(w http.ResponseWriter, req *http.Request) {
 
 	uri := r.findTarget(req.RequestURI) + req.RequestURI
 
