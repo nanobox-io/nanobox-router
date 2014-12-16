@@ -12,11 +12,11 @@ import (
 type Router struct {
 	log     hatchet.Logger
 	Targets map[string]string
-	Port    int
+	Port    string
 }
 
 // New creates a new router sets its logger and returns a pointer to the Router object
-func New(port int, log hatchet.Logger) *Router {
+func New(port string, log hatchet.Logger) *Router {
 	if log == nil {
 		log = hatchet.DevNullLogger{}
 	}
@@ -34,9 +34,9 @@ func New(port int, log hatchet.Logger) *Router {
 // but before the router can route the traffic it needs to know where traffic is going
 func (r *Router) start() {
 	go func() {
-		r.log.Info(strconv.Itoa(r.Port))
+		r.log.Info(r.Port)
 		pHandler := http.HandlerFunc(r.proxy)
-		http.ListenAndServe("0.0.0.0:"+strconv.Itoa(r.Port), pHandler)
+		http.ListenAndServe("0.0.0.0:"+r.Port, pHandler)
 	}()
 }
 

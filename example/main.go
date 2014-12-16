@@ -7,7 +7,7 @@ import "time"
 func main() {
 	log := lumber.NewConsoleLogger(lumber.INFO)
 
-	r := router.New(80, log)
+	r := router.New("80", log)
 	r.AddTarget("/", "http://drawception.com")
 	r.AddTarget("/category/", "http://macmagazine.com.br")
 
