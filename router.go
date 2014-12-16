@@ -5,30 +5,21 @@ import (
   "net/http"
   "io/ioutil"
   "strconv"
-  "errors"
   "strings"
+  "github.com/nanobox-core/hatchet"
 )
-
-type Logger interface {
-  Fatal(string, ...interface{})
-  Error(string, ...interface{})
-  Warn(string, ...interface{})
-  Info(string, ...interface{})
-  Debug(string, ...interface{})
-  Trace(string, ...interface{})
-}
 
 // Router is the device by which you create routing rules
 type Router struct {
-  log Logger
+  log hatchet.Logger
   Targets map[string]string
   Port    int
 }
 
 // New creates a new router sets its logger and returns a pointer to the Router object
-func New(port int, log Logger) *Router, error {
+func New(port int, log hatchet.Logger) *Router {
   if log == nil {
-    return nil, errors.New("Cannot create a new Router without a logger")
+    log = hatchet.DevNullLogger{}
   }
   return &Router{
     log: log,
@@ -55,7 +46,7 @@ func (r *Router) AddTarget(path, target string) {
 }
 
 // RemoveTarget removes a path from the routing table
-func (r *Router) RemoveTarget(path) {
+func (r *Router) RemoveTarget(path string) {
   delete(r.Targets, path)
 }
 
@@ -66,11 +57,11 @@ func (r *Router)report(w http.ResponseWriter, req *http.Request){
 
   r.log.Info(req.Method + ": " + uri)
 
-  if req.Method == "POST" {
-    body, err := ioutil.ReadAll(req.Body)
-    r.fatal(err)
-    r.log.Info("Body: %v\n", string(body));
-  }
+  // if req.Method == "POST" {
+  //   body, err := ioutil.ReadAll(req.Body)
+  //   r.fatal(err)
+  //   r.log.Info("Body: %v\n", string(body));
+  // }
 
   rr, err := http.NewRequest(req.Method, uri, req.Body)
   r.fatal(err)
