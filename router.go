@@ -25,14 +25,14 @@ func New(port int, log hatchet.Logger) *Router {
     Port:    port,
     Targets: make(map[string]string),
   }
-  r.Start()
+  r.start()
 	return r
 }
 
-// Start fires up the http listener and routes traffic to your targets
+// start fires up the http listener and routes traffic to your targets
 // targets dont have to be set when the start is started
 // but before the router can route the traffic it needs to know where traffic is going
-func (r *Router) Start() {
+func (r *Router) start() {
 	go func() {
 		r.log.Info(strconv.Itoa(r.Port))
 		pHandler := http.HandlerFunc(r.proxy)
