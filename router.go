@@ -35,7 +35,10 @@ func (r *Router) start() {
 	go func() {
 		r.log.Info(r.Port)
 		pHandler := http.HandlerFunc(r.proxy)
-		http.ListenAndServe("0.0.0.0:"+r.Port, pHandler)
+		err := http.ListenAndServe("0.0.0.0:"+r.Port, pHandler)
+    if err != nil {
+      r.log.Error(err.Error())
+    }
 	}()
 }
 
