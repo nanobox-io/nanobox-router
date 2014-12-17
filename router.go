@@ -42,13 +42,11 @@ func New(port string, logger hatchet.Logger) *Router {
 // the traffic it needs to know where traffic is going
 func (r *Router) start() {
 	go func() {
-		r.log.Info("Router listening on port: %v", r.Port)
-
-		//
+		r.log.Debug("[ROUTER]listening on port: %v", r.Port)
 		err := http.ListenAndServe("0.0.0.0:"+r.Port, http.HandlerFunc(r.proxy))
-		if err != nil {
-			r.log.Error(err.Error())
-		}
+    if err != nil {
+      r.log.Error(err.Error())
+    }
 	}()
 }
 
@@ -69,7 +67,7 @@ func (r *Router) proxy(rw http.ResponseWriter, req *http.Request) {
 	//
 	uri := r.findTarget(req.RequestURI) + req.RequestURI
 
-	r.log.Info(req.Method + ": " + uri)
+	r.log.Debug("[ROUTER]"+req.Method + ": " + uri)
 
 	//
 	remote, err := http.NewRequest(req.Method, uri, req.Body)
@@ -82,7 +80,7 @@ func (r *Router) proxy(rw http.ResponseWriter, req *http.Request) {
 	res, err := transport.RoundTrip(remote)
 	r.fatal(err)
 
-	r.log.Info("Response-Headers: %v\n", res.Header)
+	r.log.Debug("[ROUTER]Resp-Headers: %v\n", res.Header)
 
 	//
 	body, err := ioutil.ReadAll(res.Body)
@@ -118,11 +116,11 @@ func copyHeader(source http.Header, dest *http.Header) {
 // a match. If it cant find it it strips the path one / back and recursively tries
 // finding something.
 func (r *Router) findTarget(path string) string {
-	r.log.Info("Find target for: %v", path)
+	r.log.Debug("[ROUTER]Find target for: %v", path)
 
 	//
 	if target, ok := r.Targets[path]; ok {
-		r.log.Info("Found: %v", target)
+		r.log.Debug("[ROUTER]Found: %v", target)
 
 		return target
 	} else {
