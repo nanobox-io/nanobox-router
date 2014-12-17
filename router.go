@@ -45,7 +45,7 @@ func (r *Router) start() {
 		r.log.Debug("[ROUTER]listening on port: %v", r.Port)
 		err := http.ListenAndServe("0.0.0.0:"+r.Port, http.HandlerFunc(r.proxy))
     if err != nil {
-      r.log.Error(err.Error())
+      r.log.Error("[ROUTER]"+err.Error())
     }
 	}()
 }
