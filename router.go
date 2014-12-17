@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+const (
+	DefaultPort = "80"
+)
+
 // Router is the device by which you create routing rules
 type Router struct {
 	log     hatchet.Logger
