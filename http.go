@@ -33,6 +33,10 @@ func (r *Router) RemoveTarget(path string) {
 
 // proxy is the http handler that does the all the real routing work
 func (r *Router) proxy(rw http.ResponseWriter, req *http.Request) {
+	if r.Handler != nil {
+		r.Handler.ServeHTTP(rw, req)
+		return
+	}
 
 	//
 	uri := r.findTarget(req.RequestURI) + req.RequestURI

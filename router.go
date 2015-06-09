@@ -3,10 +3,12 @@ package router
 import (
 	"github.com/pagodabox/golang-hatchet"
 	"net"
+	"net/http"
 )
 
 // Router is the device by which you create routing rules
 type Router struct {
+	Handler  http.Handler
 	log      hatchet.Logger
 	Targets  map[string]string
 	Port     string

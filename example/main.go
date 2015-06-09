@@ -19,6 +19,9 @@ func main() {
 	log.Info("%d\n", port)
 
 	time.Sleep(100 * time.Second)
+	r.Handler = router.NoDeploy{}
+	time.Sleep(20 * time.Second)
+	r.Handler = nil
 	log.Info("port is still : ", r.GetLocalPort("192.168.13.164:22"))
 	r.RemoveForward("192.168.13.164:22")
 	time.Sleep(100 * time.Second)
