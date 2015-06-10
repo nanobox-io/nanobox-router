@@ -53,6 +53,9 @@ func (r *Router) proxy(rw http.ResponseWriter, req *http.Request) {
 	var transport http.Transport
 	res, err := transport.RoundTrip(remote)
 	r.handleError(err)
+	if err != nil {
+		return
+	}
 
 	r.log.Debug("[ROUTER] Resp-Headers: %v\n", res.Header)
 
