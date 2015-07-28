@@ -12,7 +12,7 @@ func main() {
 	r.AddTarget("/category/", "http://macmagazine.com.br")
 
 	log.Info("adding tcpforward to google.com:80")
-	port, err := r.AddForward("192.168.13.164:22")
+	port, err := r.AddForward("what", "192.168.13.164:22")
 	if err != nil {
 		log.Error(err.Error())
 	}
@@ -23,6 +23,6 @@ func main() {
 	time.Sleep(20 * time.Second)
 	r.Handler = nil
 	log.Info("port is still : ", r.GetLocalPort("192.168.13.164:22"))
-	r.RemoveForward("192.168.13.164:22")
+	r.RemoveForward("what")
 	time.Sleep(100 * time.Second)
 }

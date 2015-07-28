@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-func (r *Router) AddForward(remote string) (int, error) {
+func (r *Router) AddForward(name, remote string) (int, error) {
 	laddr := net.TCPAddr{
 		IP:   net.ParseIP("0.0.0.0"),
 		Port: 0,
@@ -17,7 +17,7 @@ func (r *Router) AddForward(remote string) (int, error) {
 		return 0, err
 	}
 
-	r.Forwards[remote] = listener
+	r.Forwards[name] = listener
 
 	go r.tcpListen(listener, remote)
 
@@ -26,12 +26,12 @@ func (r *Router) AddForward(remote string) (int, error) {
 	return tcpAddr.Port, nil
 }
 
-func (r *Router) GetForward(remote string) *net.TCPListener {
-	return r.Forwards[remote]
+func (r *Router) GetForward(name string) *net.TCPListener {
+	return r.Forwards[name]
 }
 
-func (r *Router) GetLocalPort(remote string) int {
-	listener := r.Forwards[remote]
+func (r *Router) GetLocalPort(name string) int {
+	listener := r.Forwards[name]
 	if listener == nil {
 		return 0
 	}
@@ -41,13 +41,13 @@ func (r *Router) GetLocalPort(remote string) int {
 	return tcpAddr.Port
 }
 
-func (r *Router) RemoveForward(remote string) error {
-	listener := r.Forwards[remote]
+func (r *Router) RemoveForward(name string) error {
+	listener := r.Forwards[name]
 	if listener == nil {
 		return errors.New("I could not find the forward you seek")
 	}
 	listener.Close()
-	delete(r.Forwards, remote)
+	delete(r.Forwards, name)
 	return nil
 }
 
