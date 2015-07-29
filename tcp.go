@@ -6,14 +6,20 @@ import (
 	"net"
 )
 
-func (r *Router) AddForward(name, remote string) (int, error) {
+func (r *Router) AddForward(name string, localPort int, remote string) (int, error) {
 	laddr := net.TCPAddr{
 		IP:   net.ParseIP("0.0.0.0"),
-		Port: 0,
+		Port: localPort,
 	}
 
 	listener, err := net.ListenTCP("tcp4", &laddr)
 	if err != nil {
+		// if the error is that the bind address is taken lets try another port
+		operr, ok := err.(*net.OpError)
+		if ok && operr.Err.Error() == "bind: address already in use" {
+			return r.AddForward(name, localPort+1, remote)
+		}
+
 		return 0, err
 	}
 

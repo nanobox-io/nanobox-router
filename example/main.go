@@ -3,6 +3,7 @@ package main
 import "github.com/pagodabox/nanobox-router"
 import "github.com/jcelliott/lumber"
 import "time"
+import "net"
 
 func main() {
 	log := lumber.NewConsoleLogger(lumber.INFO)
@@ -12,9 +13,21 @@ func main() {
 	r.AddTarget("/category/", "http://macmagazine.com.br")
 
 	log.Info("adding tcpforward to google.com:80")
-	port, err := r.AddForward("what", "192.168.13.164:22")
+	port, err := r.AddForward("what", 1234, "192.168.13.164:22")
 	if err != nil {
-		log.Error(err.Error())
+		log.Error("%#v\n", err.Error())
+		errer := err.(*net.OpError)
+		if errer.Err.Error() == "bind: address already in use" {
+			log.Info("HAY!!!")
+		}
+	}
+	port, err = r.AddForward("what", 1234, "192.168.13.164:22")
+	if err != nil {
+		log.Error("%#v\n", err.Error())
+		errer := err.(*net.OpError)
+		if errer.Err.Error() == "bind: address already in use" {
+			log.Info("HAY!!!")
+		}
 	}
 	log.Info("%d\n", port)
 
