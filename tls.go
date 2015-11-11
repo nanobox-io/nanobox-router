@@ -49,22 +49,20 @@ func StartTLS(addr string) error {
 }
 
 // update the stored certificates and restart the web server
-func UpdateCerts(newKeys []KeyPair) error {
+func UpdateCerts(newKeys []KeyPair) {
 	newCerts := []tls.Certificate{}
 	for _, newKey := range newKeys {
 		cert, err := tls.X509KeyPair([]byte(newKey.Cert), []byte(newKey.Key))
-		if err != nil {
-			return err
+		if err == nil {
+			newCerts = append(newCerts, cert)
 		}
-		newCerts = append(newCerts, cert)
+		
 	}
 	domainLock.Lock()
 	keys = newKeys
 	certificates = newCerts
 	domainLock.Unlock()
 	StartTLS(address)
-
-	return nil
 }
 
 // list the cached keys.
