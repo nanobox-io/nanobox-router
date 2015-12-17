@@ -13,6 +13,12 @@ func UpdateRoutes(newRoutes []Route) {
 	newDomains := []Domain{}
 	for _, route := range newRoutes {
 		dom := Domain{Name: route.Name, Path: route.Path, proxies: []*Proxy{}}
+		if route.Page != "" {
+			// if im given a page for the route
+			// do not populate the proxies.
+			dom.Page = []byte(route.Page)
+			continue
+		}
 		for _, url := range route.URLs {
 			prox := &Proxy{URL: url}
 			err := prox.initProxy()

@@ -11,8 +11,10 @@ import (
 
 // A route object from the api
 type Route struct {
-	Name, Path string
-	URLs       []string
+	Name string   `json:"name"`
+	Path string   `json:"path"`
+	URLs []string `json:"urls"`
+	Page string   `json:"name"`
 }
 
 var domainLock = sync.Mutex{}
@@ -26,6 +28,7 @@ type Domain struct {
 	Name    string
 	Path    string
 	proxies []*Proxy
+	Page    []byte
 }
 
 // Simple Ip storage for creating Reverse Proxies
