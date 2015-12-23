@@ -50,10 +50,10 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 func bestMatch(host, path string) *Domain {
 	var dom *Domain
 	matchScore := 0
-	for _, domain := range domains {
-		if domain.Name == host && strings.HasPrefix(path, domain.Path) && matchScore < len(domain.Path) {
-			dom = &domain
-			matchScore = len(domain.Path)
+	for i := 0; i < len(domains); i++ {
+		if domains[i].Name == host && strings.HasPrefix(path, domains[i].Path) && matchScore < len(domains[i].Path) {
+			dom = &domains[i]
+			matchScore = len(domains[i].Path)
 		}
 	}
 	if dom == nil {
