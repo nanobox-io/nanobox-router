@@ -14,7 +14,7 @@ type Route struct {
 	Name string   `json:"name"`
 	Path string   `json:"path"`
 	URLs []string `json:"urls"`
-	Page string   `json:"name"`
+	Page string   `json:"page"`
 }
 
 var domainLock = sync.Mutex{}
