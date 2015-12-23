@@ -16,7 +16,6 @@ func UpdateRoutes(newRoutes []Route) {
 			// if im given a page for the route
 			// do not populate the proxies.
 			dom.Page = []byte(route.Page)
-			continue
 		}
 		for _, url := range route.URLs {
 			prox := &Proxy{URL: url}
