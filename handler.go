@@ -36,6 +36,10 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			rw.Write(domain.Page)
 			return
 		}
+		if len(domain.proxies) == 0 {
+			NoRoutes{}.ServeHTTP(rw, req)
+			return
+		}
 		proxy := domain.proxies[atomic.AddUint32(&robiner, 1)%uint32(len(domain.proxies))]
 		proxy.reverseProxy.ServeHTTP(rw, req)
 		return
