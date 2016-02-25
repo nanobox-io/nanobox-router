@@ -15,7 +15,8 @@ var certificates = []tls.Certificate{}
 var keys = []KeyPair{}
 
 type KeyPair struct {
-	Cert, Key string
+	Cert string `json:"cert"`
+	Key  string `json:"key"`
 }
 
 var address = ":443"
