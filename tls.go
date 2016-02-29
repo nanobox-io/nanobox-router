@@ -60,10 +60,10 @@ func UpdateCerts(newKeys []KeyPair) {
 		}
 
 	}
-	domainLock.Lock()
+	mutex.Lock()
 	keys = newKeys
 	certificates = newCerts
-	domainLock.Unlock()
+	mutex.Unlock()
 	StartTLS(address)
 }
 
