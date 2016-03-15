@@ -11,11 +11,11 @@ import (
 
 // A route object from the api
 type Route struct {
-	SubDomain string `json:"subdomain"`
-	Domain    string `json:"subdomain"`
-	Path string   `json:"path"`
-	Targets []string `json:"targets"`
-	Page string   `json:"page"`
+	SubDomain string   `json:"subdomain"`
+	Domain    string   `json:"domain"`
+	Path      string   `json:"path"`
+	Targets   []string `json:"targets"`
+	Page      string   `json:"page"`
 
 	proxies []*proxy
 }

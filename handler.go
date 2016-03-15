@@ -84,13 +84,13 @@ func domainMatch(requestHost string, r Route) bool {
 			return false
 		}
 		subHost := strings.Join(hostParts[:len(hostParts)-2], ".")
-		
+
 		// direct compare
 		return subHost == r.SubDomain
 	}
 	return true
 }
 
-func pathMatch(requestPath string , r Route) bool {
+func pathMatch(requestPath string, r Route) bool {
 	return strings.HasPrefix(requestPath, r.Path)
 }
