@@ -1,12 +1,15 @@
 // Copyright (C) Pagoda Box, Inc - All Rights Reserved
 // Unauthorized copying of this file, via any medium is strictly prohibited
 // Proprietary and confidential
+
 package router
 
 import (
 	"crypto/tls"
 	"net"
 	"net/http"
+
+	"github.com/jcelliott/lumber"
 )
 
 var tlsListener net.Listener
@@ -19,10 +22,10 @@ type KeyPair struct {
 	Key  string `json:"key"`
 }
 
-var address = ":443"
+var address = "0.0.0.0:443"
 
 // Start listening for secure connection.
-// The web server is split out from the much simpler from of
+// The web server is split out from the much simpler form of
 //   http.ListenAndServeTLS(addr string, certFile string, keyFile string, handler Handler)
 // because we needed to handle multiple certs all at the same time and we needed
 // to be able to change the set of certs without restarting the server
@@ -44,7 +47,6 @@ func StartTLS(addr string) error {
 		}
 
 		go http.Serve(tlsListener, handler{https: true})
-
 	}
 
 	return nil
@@ -57,14 +59,17 @@ func UpdateCerts(newKeys []KeyPair) {
 		cert, err := tls.X509KeyPair([]byte(newKey.Cert), []byte(newKey.Key))
 		if err == nil {
 			newCerts = append(newCerts, cert)
+		} else {
+			lumber.Error("[NANOBOX-ROUTER] Failed to update certs - %v", err)
 		}
-
 	}
+
 	mutex.Lock()
 	keys = newKeys
 	certificates = newCerts
 	mutex.Unlock()
 	StartTLS(address)
+	lumber.Trace("[NANOBOX-ROUTER] Certs updated")
 }
 
 // list the cached keys.

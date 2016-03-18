@@ -1,6 +1,7 @@
 // Copyright (C) Pagoda Box, Inc - All Rights Reserved
 // Unauthorized copying of this file, via any medium is strictly prohibited
 // Proprietary and confidential
+
 package router
 
 import (
@@ -8,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 	"sync/atomic"
+
+	"github.com/jcelliott/lumber"
 )
 
 // the number used to % for round robin requests
@@ -45,6 +48,7 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// if i get to here i have no idea where to send your request
+	lumber.Debug("[NANOBOX-ROUTER] Unsure where to route!")
 }
 
 // route and subdomain matching system.
