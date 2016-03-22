@@ -9,10 +9,11 @@ import (
 	"net/http"
 )
 
+// httpListener allows updates to routes
 var httpListener net.Listener
 
-// Start the Http Listener.
-// It could be made simple but I wanted tls and http to handle requests the same way.
+// Start the Http Listener. Intentionally handles http requests the same way as
+// tls.
 func StartHTTP(address string) error {
 	var err error
 	if httpListener != nil {

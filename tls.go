@@ -12,36 +12,43 @@ import (
 	"github.com/jcelliott/lumber"
 )
 
-var tlsListener net.Listener
-var certificates = []tls.Certificate{}
-
-var keys = []KeyPair{}
-
+// A KeyPair contains a key and certificate used to create a tls.Certificate
 type KeyPair struct {
 	Cert string `json:"cert"`
 	Key  string `json:"key"`
 }
 
-var address = "0.0.0.0:443"
+// certificates stores all generated Certificates
+var certificates = []tls.Certificate{}
+
+// keys stores all registered KeyPair objects
+var keys = []KeyPair{}
+
+// the default address to listen on for secure connections
+var tlsAddress = "0.0.0.0:443"
+
+// tlsListener is required for handling multiple certs
+var tlsListener net.Listener
 
 // Start listening for secure connection.
 // The web server is split out from the much simpler form of
-//   http.ListenAndServeTLS(addr string, certFile string, keyFile string, handler Handler)
+//  http.ListenAndServeTLS(addr string, certFile string, keyFile string, handler Handler)
 // because we needed to handle multiple certs all at the same time and we needed
 // to be able to change the set of certs without restarting the server
 // this can be done by establishing a tls listener seperate form the http Server.
 func StartTLS(addr string) error {
-	address = addr
+	tlsAddress = addr
 	var err error
 	if tlsListener != nil {
 		tlsListener.Close()
 	}
+	// start only if we have certificates registered
 	if len(certificates) > 0 {
 		config := &tls.Config{
 			Certificates: certificates,
 		}
 		config.BuildNameToCertificate()
-		tlsListener, err = tls.Listen("tcp", address, config)
+		tlsListener, err = tls.Listen("tcp", tlsAddress, config)
 		if err != nil {
 			return err
 		}
@@ -52,10 +59,12 @@ func StartTLS(addr string) error {
 	return nil
 }
 
-// update the stored certificates and restart the web server
+// UpdateCerts replaces registered certificates with a new set and restart the
+// secure web server
 func UpdateCerts(newKeys []KeyPair) {
 	newCerts := []tls.Certificate{}
 	for _, newKey := range newKeys {
+		// create a Certificate from KeyPair
 		cert, err := tls.X509KeyPair([]byte(newKey.Cert), []byte(newKey.Key))
 		if err == nil {
 			newCerts = append(newCerts, cert)
@@ -68,11 +77,11 @@ func UpdateCerts(newKeys []KeyPair) {
 	keys = newKeys
 	certificates = newCerts
 	mutex.Unlock()
-	StartTLS(address)
+	StartTLS(tlsAddress)
 	lumber.Trace("[NANOBOX-ROUTER] Certs updated")
 }
 
-// list the cached keys.
+// Keys returns registered keys
 func Keys() []KeyPair {
 	return keys
 }
