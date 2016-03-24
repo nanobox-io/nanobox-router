@@ -16,8 +16,8 @@ import (
 
 // A Route contains the routing rules for a specific match. A match is based on
 // the subdomain, domain, and path. If no path is specified, subdomain/domain
-// matching will be used. If a path does not end in "/", the match will be
-// similar to /path*/ (subject to change).
+// matching will be used. A path may include the "*" wildcard character at the
+// end of the path ("/admin*") for a broader match.
 //
 // "Targets" are not required if a "Page" is defined. A target is a list of
 // servers to proxy a request to. A page gets served to clients upon a successful
@@ -54,7 +54,7 @@ var mutex = sync.Mutex{}
 
 // UpdateRoutes replaces registered routes with a new set and initializes their
 // proxies, if needed
-func UpdateRoutes(newRoutes []Route) {
+func UpdateRoutes(newRoutes []Route) error {
 	for i := range newRoutes {
 		for _, tgt := range newRoutes[i].Targets {
 			prox := &proxy{targetUrl: tgt, fwdPath: newRoutes[i].FwdPath}
@@ -63,6 +63,7 @@ func UpdateRoutes(newRoutes []Route) {
 				newRoutes[i].proxies = append(newRoutes[i].proxies, prox)
 			} else {
 				lumber.Error("[NANOBOX-ROUTER] Failed to update routes - %v", err)
+				return err
 			}
 		}
 	}
@@ -71,6 +72,7 @@ func UpdateRoutes(newRoutes []Route) {
 	routes = newRoutes
 	mutex.Unlock()
 	lumber.Trace("[NANOBOX-ROUTER] Routes updated")
+	return nil
 }
 
 // Routes returns registered routes

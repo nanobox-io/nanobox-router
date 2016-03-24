@@ -61,7 +61,7 @@ func StartTLS(addr string) error {
 
 // UpdateCerts replaces registered certificates with a new set and restart the
 // secure web server
-func UpdateCerts(newKeys []KeyPair) {
+func UpdateCerts(newKeys []KeyPair) error {
 	newCerts := []tls.Certificate{}
 	for _, newKey := range newKeys {
 		// create a Certificate from KeyPair
@@ -70,6 +70,7 @@ func UpdateCerts(newKeys []KeyPair) {
 			newCerts = append(newCerts, cert)
 		} else {
 			lumber.Error("[NANOBOX-ROUTER] Failed to update certs - %v", err)
+			return err
 		}
 	}
 
@@ -79,6 +80,7 @@ func UpdateCerts(newKeys []KeyPair) {
 	mutex.Unlock()
 	StartTLS(tlsAddress)
 	lumber.Trace("[NANOBOX-ROUTER] Certs updated")
+	return nil
 }
 
 // Keys returns registered keys
