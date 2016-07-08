@@ -6,11 +6,13 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/jcelliott/lumber"
+	"golang.org/x/net/websocket"
 
 	"github.com/nanobox-io/nanobox-router"
 )
@@ -172,6 +174,7 @@ func TestHandler(t *testing.T) {
 	}
 	getIt := func(req *http.Request) string {
 		client := &http.Client{}
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 		resp, err := client.Do(req)
 		if err != nil {
 			t.Error("Failed test GET - %v", err)
@@ -297,6 +300,91 @@ func TestHandler(t *testing.T) {
 	resp = getIt(req)
 	if resp != "NoRoutes\n" {
 		t.Errorf("%q doesn't match expected out", resp)
+	}
+}
+
+var oldProxyHttp = "127.0.0.1:8090"
+
+// TestDepProxy tests deprecated new proxy function
+func TestDepProxy(t *testing.T) {
+	uri, err := url.Parse("http://" + fakeListen)
+	if err != nil {
+		t.Errorf("Failed to parse listen address", err)
+	}
+
+	oldProxy := router.NewReverseProxy(uri, "")
+
+	go http.ListenAndServe(oldProxyHttp, oldProxy)
+	time.Sleep(time.Second)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", "http://"+oldProxyHttp, nil)
+	if err != nil {
+		t.Error("Failed create GET - %v", err)
+		t.FailNow()
+	}
+	// set Host
+	req.Host = "nanobox-router.test"
+
+	go func() {
+		_, err = client.Do(req)
+		if err != nil {
+			t.Error("Failed test GET - %v", err)
+			t.FailNow()
+		}
+	}()
+	time.Sleep(500 * time.Millisecond)
+	hdrs := <-headers
+
+	if hdrs.Get("X-Forwarded-Proto") != "" || hdrs.Get("X-Forwarded-For") != "127.0.0.1" {
+		t.Errorf("Headers do not match expected! Proto: '%v' For: '%v'", hdrs.Get("X-Forwarded-Proto"), hdrs.Get("X-Forwarded-For"))
+	}
+}
+
+var fakeWsListen = "127.0.0.1:8181"
+
+// TestWebsockets tests websocket proxy functionality
+func TestWebsockets(t *testing.T) {
+	// add route to ws endpoint
+	routes := []router.Route{
+		router.Route{Path: "/zecho", Targets: []string{"ws://" + fakeWsListen}},
+	}
+
+	router.UpdateRoutes(routes)
+
+	// create simple ws endpoint
+	echo := func(ws *websocket.Conn) {
+		io.Copy(ws, ws)
+	}
+	// todo: ensure this doesn't end-run the proxy
+	http.Handle("/zecho", websocket.Handler(echo))
+
+	go http.ListenAndServe(fakeWsListen, nil)
+	time.Sleep(time.Second)
+
+	// dial proxy address (should proxy to endpoint)
+	ws, err := websocket.Dial("ws://"+proxyHttp+"/zecho", "", "http://localhost")
+	if err != nil {
+		t.Error("Failed ws DIAL - %v", err)
+		t.FailNow()
+	}
+
+	// write a message on the socket
+	if _, err := ws.Write([]byte("success!")); err != nil {
+		t.Error("Failed ws WRITE - %v", err)
+		t.FailNow()
+	}
+
+	var msg = make([]byte, 128)
+	var n int
+	// read the message from the socket
+	if n, err = ws.Read(msg); err != nil {
+		t.Error("Failed ws READ - %v", err)
+		t.FailNow()
+	}
+
+	if string(msg[:n]) != "success!" {
+		t.Errorf("%q doesn't match expected out", msg[:n])
 	}
 }
 
