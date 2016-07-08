@@ -47,13 +47,14 @@ func StartTLS(addr string) error {
 		config := &tls.Config{
 			Certificates: certificates,
 		}
+		// support sni
 		config.BuildNameToCertificate()
 		tlsListener, err = tls.Listen("tcp", tlsAddress, config)
 		if err != nil {
 			return err
 		}
 
-		go http.Serve(tlsListener, handler{https: true})
+		go http.Serve(tlsListener, &handler{https: true})
 	}
 
 	return nil

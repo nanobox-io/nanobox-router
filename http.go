@@ -24,7 +24,7 @@ func StartHTTP(address string) error {
 		return err
 	}
 
-	go http.Serve(httpListener, handler{})
+	go http.Serve(httpListener, &handler{})
 
 	return nil
 }

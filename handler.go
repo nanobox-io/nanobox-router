@@ -39,11 +39,13 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		req.Header.Set("X-Forwarded-Proto", "https")
 	}
 
+	// because net.SplitHostPort errors if no port
 	re := regexp.MustCompile(`:\d+`) // used to remove the port from the host
 	host := string(re.ReplaceAll([]byte(req.Host), nil))
 	// find match
 	route := bestMatch(host, req.URL.Path)
 	lumber.Trace("[NANOBOX-ROUTER] Route chosen: '%+q'", route)
+	// lumber.Trace("[NANOBOX-ROUTER] Request Headers: '%+q'", req.Header)
 	if route != nil {
 		// serve page
 		if route.Page != "" {
@@ -57,7 +59,15 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 		// proxy the request (round-robin)
 		proxy := route.proxies[atomic.AddUint32(&robiner, 1)%uint32(len(route.proxies))]
-		proxy.reverseProxy.ServeHTTP(rw, req)
+
+		// todo: maybe? or just check target's scheme
+		lumber.Trace("URL-----%+q", req.URL)
+		if strings.ToLower(req.Header.Get("Upgrade")) == "websocket" {
+			lumber.Trace("[NANOBOX-ROUTER] Websocket detected...")
+			ServeWS(rw, req, proxy.reverseProxy)
+		} else {
+			proxy.reverseProxy.ServeHTTP(rw, req)
+		}
 		return
 	}
 
@@ -72,7 +82,7 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 // in a recursive manor until a match is or isn't found. Path matches are scored
 // so the route with the longest matching path is chosen.
 func bestMatch(host, path string) (route *Route) {
-	lumber.Trace("[NANOBOX-ROUTER] Checking Request '%v'...", host+path)
+	lumber.Trace("[NANOBOX-ROUTER] Checking Request: '%v'...", host+path)
 	matchScore := 0
 	for i := range routes {
 		lumber.Trace("[NANOBOX-ROUTER] Checking Route: '%v'", routes[i].SubDomain+"."+routes[i].Domain+routes[i].Path)

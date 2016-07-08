@@ -2,11 +2,9 @@
 [![GoDoc](https://godoc.org/github.com/nanobox-io/nanobox-router?status.svg)](https://godoc.org/github.com/nanobox-io/nanobox-router)
 
 # nanobox-router
-
-Simple client for creating and updating custom defined http(s) proxies without restarting a server application.
+Simple client for creating and updating custom defined http[s] and ws[s] proxies/ssl-termination without restarting a server application.
 
 ## Status
-
 Stable/Complete
 
 ## Quickstart
@@ -96,6 +94,10 @@ KeyPair{
 ## Contributing
 
 Contributions to the nanobox-router project are welcome and encouraged. Contributions should follow the [Nanobox Contribution Process & Guidelines](https://docs.nanobox.io/contributing/).
+
+## Todo
+
+- Add configurable `ErrorLog` like `net/http/httputil`s ReverseProxy
 
 ## Licence
 
