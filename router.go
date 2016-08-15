@@ -47,6 +47,7 @@ type Route struct {
 type proxy struct {
 	targetUrl    string                 // one of the Route's targets
 	fwdPath      string                 // customizable path to forward to target
+	prefixPath   string                 // prefix to subtract from request path when forwarding
 	reverseProxy *httputil.ReverseProxy // handler that forwards requests to another server, proxying their response back to the client
 	// ignoreCert   bool                   // ignore checking upstream cert (likely will be configurable later, but we trust the upstream)
 }
@@ -65,7 +66,7 @@ var mutex = sync.Mutex{}
 func UpdateRoutes(newRoutes []Route) error {
 	for i := range newRoutes {
 		for _, tgt := range newRoutes[i].Targets {
-			prox := &proxy{targetUrl: tgt, fwdPath: newRoutes[i].FwdPath}
+			prox := &proxy{targetUrl: tgt, fwdPath: newRoutes[i].FwdPath, prefixPath: newRoutes[i].Path}
 			err := prox.initProxy()
 			if err == nil {
 				newRoutes[i].proxies = append(newRoutes[i].proxies, prox)
@@ -95,7 +96,7 @@ func (self *proxy) initProxy() error {
 		if err != nil {
 			return err
 		}
-		self.reverseProxy = NewSingleHostReverseProxy(uri, self.fwdPath, IgnoreUpstreamCerts)
+		self.reverseProxy = NewSingleHostReverseProxy(uri, self.fwdPath, IgnoreUpstreamCerts, self.prefixPath)
 		lumber.Trace("[NANOBOX-ROUTER] New proxy set")
 	}
 	return nil
@@ -113,7 +114,7 @@ func Start(httpAddress, tlsAddress string) error {
 // NewSingleHostReverseProxy is a customized copy of httputil.NewSingleHostReverseProxy
 // that allows optional nginx 'sub_filter'-like behavior (customize "path"
 // forwarded to target) as well as optionally ignoring upstream cert checking
-func NewSingleHostReverseProxy(target *url.URL, fwdPath string, ignore bool) *httputil.ReverseProxy {
+func NewSingleHostReverseProxy(target *url.URL, fwdPath string, ignore bool, prefixPath string) *httputil.ReverseProxy {
 	targetQuery := target.RawQuery
 	director := func(req *http.Request) {
 		req.URL.Scheme = target.Scheme
@@ -122,8 +123,9 @@ func NewSingleHostReverseProxy(target *url.URL, fwdPath string, ignore bool) *ht
 			// if no forward path specified, use path defined in target + query path
 			req.URL.Path = singleJoiningSlash(target.Path, req.URL.Path)
 		} else {
-			// use path defined in target + specified forward path
-			req.URL.Path = singleJoiningSlash(target.Path, fwdPath)
+			fPath := singleJoiningSlash(fwdPath, strings.TrimPrefix(req.URL.Path, prefixPath))
+			// use path defined in target + specified forward path + prefix stripped req path
+			req.URL.Path = singleJoiningSlash(target.Path, fPath)
 		}
 		if targetQuery == "" || req.URL.RawQuery == "" {
 			req.URL.RawQuery = targetQuery + req.URL.RawQuery
