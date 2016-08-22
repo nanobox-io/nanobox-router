@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/jcelliott/lumber"
 )
@@ -79,7 +80,14 @@ func UpdateCerts(newKeys []KeyPair) error {
 	keys = newKeys
 	certificates = newCerts
 	mutex.Unlock()
-	StartTLS(tlsAddress)
+	err := StartTLS(tlsAddress)
+	if err != nil {
+		// if failed due to address in use, retry, otherwise just fail
+		if strings.Contains(err.Error(), "already in use") {
+			return UpdateCerts(newKeys)
+		}
+		lumber.Error("[NANOBOX-ROUTER] Failed to restart TLS listener - %v", err)
+	}
 	lumber.Trace("[NANOBOX-ROUTER] Certs updated")
 	return nil
 }
