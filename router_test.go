@@ -28,6 +28,7 @@ var headers chan http.Header
 func TestMain(m *testing.M) {
 	headers = make(chan http.Header)
 	lumber.Level(lumber.LvlInt("FATAL"))
+	// lumber.Level(lumber.LvlInt("TRACE"))
 	// start fake webserver (we will use to check what headers get set)
 	go startFakeWeb()
 
@@ -150,16 +151,21 @@ func TestHandler(t *testing.T) {
 		router.Route{Domain: "nanobox-router.test", Path: "/d", Page: "route-d"},
 		router.Route{Domain: "nanobox-router.test", Path: "/e*", Page: "route-e"},
 		router.Route{Domain: "nanobox.test", Path: "/f", Page: "route-f"},
+		router.Route{SubDomain: "f", Path: "/f", Page: "subdomain-f"},
 		router.Route{Domain: "nanobox-router.test", Path: "/g", FwdPath: "/great-app", Targets: []string{"http://" + fakeListen}},
 		router.Route{Domain: "nanobox-router.test", Path: "/h", Targets: []string{"http://" + fakeListen + "?app=mine"}},
 		router.Route{Domain: "nanobox-router.test", Path: "/i"},
+		router.Route{Domain: "nano-j.test", Path: "/j", Page: "domain-j"},
+		router.Route{SubDomain: "j", Path: "/j", Page: "subdomain-j"},
+		router.Route{Domain: "nano-k.test", Page: "domain-k"},
+		router.Route{Path: "/k", Page: "path-k"},
 	}
 	router.UpdateRoutes(routes)
 
 	// get routes
 	savedRoutes := router.Routes()
 
-	if len(savedRoutes) != 9 {
+	if len(savedRoutes) != 14 {
 		t.Errorf("Failed to update routes - %v", savedRoutes)
 		t.FailNow()
 	}
@@ -276,6 +282,14 @@ func TestHandler(t *testing.T) {
 		t.Errorf("%q doesn't match expected out", resp)
 	}
 
+	// test "subdomain-f"
+	req = newReq("/f")
+	req.Host = "f.nanobox.test"
+	resp = getIt(req)
+	if resp != "subdomain-f" {
+		t.Errorf("%q doesn't match expected out", resp)
+	}
+
 	// test "route-g"
 	req = newReq("/g")
 	req.Host = "admin.nanobox-router.test"
@@ -301,6 +315,41 @@ func TestHandler(t *testing.T) {
 	if resp != "NoRoutes\n" {
 		t.Errorf("%q doesn't match expected out", resp)
 	}
+
+	// test "domain-j"
+	req = newReq("/j")
+	req.Host = "nano-j.test"
+	resp = getIt(req)
+	if resp != "domain-j" {
+		t.Errorf("%q doesn't match expected out", resp)
+	}
+
+	// test "subdomain-j"
+	req = newReq("/j")
+	req.Host = "j.nano-j.test"
+	resp = getIt(req)
+	if resp != "subdomain-j" {
+		t.Errorf("%q doesn't match expected out", resp)
+	}
+
+	// test "domain-k"
+	req = newReq("/k")
+	req.Host = "nano-k.test"
+	resp = getIt(req)
+	// domain wins over paths only, if path-k is desired for this request
+	// add another route {Domain: "domain-k", Path: "/k", Page: "path-k"}
+	if resp != "domain-k" {
+		t.Errorf("%q doesn't match expected out", resp)
+	}
+
+	// test "path-k"
+	req = newReq("/k")
+	req.Host = "nano-j.test"
+	resp = getIt(req)
+	if resp != "path-k" {
+		t.Errorf("%q doesn't match expected out", resp)
+	}
+
 }
 
 var oldProxyHttp = "127.0.0.1:8090"
@@ -402,6 +451,7 @@ func startFakeWeb() error {
 	// fmt.Println("Serving...")
 	err := http.ListenAndServe(fakeListen, nil)
 	if err != nil {
+		fmt.Println("Something really Broke...")
 		return err
 	}
 	fmt.Println("Something Broke...")

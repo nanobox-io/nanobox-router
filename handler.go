@@ -42,7 +42,9 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// because net.SplitHostPort errors if no port
 	re := regexp.MustCompile(`:\d+`) // used to remove the port from the host
 	host := string(re.ReplaceAll([]byte(req.Host), nil))
+
 	// find match
+	lumber.Trace("[NANOBOX-ROUTER] URL-----%+q", req.URL)
 	route := bestMatch(host, req.URL.Path)
 	// lumber.Trace("[NANOBOX-ROUTER] Request Headers: '%+q'", req.Header)
 	if route != nil {
@@ -62,7 +64,6 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		proxy := route.proxies[atomic.AddUint32(&robiner, 1)%uint32(len(route.proxies))]
 
 		// todo: maybe? or just check target's scheme
-		lumber.Trace("URL-----%+q", req.URL)
 		if strings.ToLower(req.Header.Get("Upgrade")) == "websocket" {
 			lumber.Trace("[NANOBOX-ROUTER] Websocket detected...")
 			ServeWS(rw, req, proxy.reverseProxy)
@@ -87,12 +88,34 @@ func bestMatch(host, path string) (route *Route) {
 	matchScore := 0
 	for i := range routes {
 		lumber.Trace("[NANOBOX-ROUTER] Checking Route: '%v'", routes[i].SubDomain+"."+routes[i].Domain+routes[i].Path)
-		if subdomainMatch(host, routes[i]) && domainMatch(host, routes[i]) && pathMatch(path, routes[i]) && matchScore <= len(routes[i].Path) {
+		if subdomainMatch(host, routes[i]) && domainMatch(host, routes[i]) && pathMatch(path, routes[i]) {
 			// Assign a temporary score to check against current matchscore for
-			// proper routing. We add length of all parts to get a more exact match.
-			matchScore = len(routes[i].Path) + len(routes[i].SubDomain) + len(routes[i].Domain)
-			route = &routes[i]
-			lumber.Trace("[NANOBOX-ROUTER] Matchscore: '%v'", matchScore)
+			// proper routing. We add length of all parts to get a more exact match
+			// if the route has the same parts set. Without the bonus, a route
+			// with a domain could beat the more defined route with a subdomain.
+			bonus := 0
+			// The reason for the imbalance is to account for cases where one route
+			// has only the domain and path set, and another route has only the
+			// subdomain and same path set.
+			if routes[i].SubDomain != "" {
+				bonus += 1500
+			}
+			if routes[i].Domain != "" {
+				bonus += 1000
+			}
+			if routes[i].Path != "" {
+				bonus += 500
+			}
+
+			tempScore := len(routes[i].Path) + len(routes[i].SubDomain) + len(routes[i].Domain) + bonus
+			lumber.Trace("[NANOBOX-ROUTER] tempScore: '%v'", tempScore)
+
+			if tempScore > matchScore {
+				matchScore = tempScore
+				route = &routes[i]
+				lumber.Trace("[NANOBOX-ROUTER] Matchscore: '%v'", matchScore)
+			}
+
 		}
 	}
 
