@@ -1,5 +1,9 @@
 language: go
-go: 1.6
+go: 1.8
+
+env:
+ - GOMAXPROCS=1
 
 install: go get -t -v .
+
 script: go test -v ./... -cover
