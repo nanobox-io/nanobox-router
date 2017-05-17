@@ -42,11 +42,14 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// because net.SplitHostPort errors if no port
 	re := regexp.MustCompile(`:\d+`) // used to remove the port from the host
 	host := string(re.ReplaceAll([]byte(req.Host), nil))
+
 	// find match
+	lumber.Trace("[NANOBOX-ROUTER] URL-----%+q", req.URL)
 	route := bestMatch(host, req.URL.Path)
-	lumber.Trace("[NANOBOX-ROUTER] Route chosen: '%+q'", route)
 	// lumber.Trace("[NANOBOX-ROUTER] Request Headers: '%+q'", req.Header)
 	if route != nil {
+		lumber.Trace("[NANOBOX-ROUTER] Route chosen: '%+q'", route)
+
 		// serve page
 		if route.Page != "" {
 			rw.Write([]byte(route.Page))
@@ -61,7 +64,6 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		proxy := route.proxies[atomic.AddUint32(&robiner, 1)%uint32(len(route.proxies))]
 
 		// todo: maybe? or just check target's scheme
-		lumber.Trace("URL-----%+q", req.URL)
 		if strings.ToLower(req.Header.Get("Upgrade")) == "websocket" {
 			lumber.Trace("[NANOBOX-ROUTER] Websocket detected...")
 			ServeWS(rw, req, proxy.reverseProxy)
@@ -86,10 +88,34 @@ func bestMatch(host, path string) (route *Route) {
 	matchScore := 0
 	for i := range routes {
 		lumber.Trace("[NANOBOX-ROUTER] Checking Route: '%v'", routes[i].SubDomain+"."+routes[i].Domain+routes[i].Path)
-		if subdomainMatch(host, routes[i]) && domainMatch(host, routes[i]) && pathMatch(path, routes[i]) && matchScore <= len(routes[i].Path) {
-			route = &routes[i]
-			matchScore = len(routes[i].Path)
-			lumber.Trace("[NANOBOX-ROUTER] Matchscore: '%v'", matchScore)
+		if subdomainMatch(host, routes[i]) && domainMatch(host, routes[i]) && pathMatch(path, routes[i]) {
+			// Assign a temporary score to check against current matchscore for
+			// proper routing. We add length of all parts to get a more exact match
+			// if the route has the same parts set. Without the bonus, a route
+			// with a domain could beat the more defined route with a subdomain.
+			bonus := 0
+			// The reason for the imbalance is to account for cases where one route
+			// has only the domain and path set, and another route has only the
+			// subdomain and same path set.
+			if routes[i].SubDomain != "" {
+				bonus += 1500
+			}
+			if routes[i].Domain != "" {
+				bonus += 1000
+			}
+			if routes[i].Path != "" {
+				bonus += 500
+			}
+
+			tempScore := len(routes[i].Path) + len(routes[i].SubDomain) + len(routes[i].Domain) + bonus
+			lumber.Trace("[NANOBOX-ROUTER] tempScore: '%v'", tempScore)
+
+			if tempScore > matchScore {
+				matchScore = tempScore
+				route = &routes[i]
+				lumber.Trace("[NANOBOX-ROUTER] Matchscore: '%v'", matchScore)
+			}
+
 		}
 	}
 
@@ -109,17 +135,19 @@ func bestMatch(host, path string) (route *Route) {
 // subdomainMatch checks if the request has a subdomain and if we have routes
 // that match that subdomain
 func subdomainMatch(requestHost string, r Route) bool {
+	// if there is no subdomain, no need to worry about matching
+	if r.SubDomain == "" {
+		return true
+	}
+
 	subdomain := ""
 	hostBits := strings.Split(requestHost, ".")
 	if len(hostBits) > 2 {
 		subdomain = strings.Join(hostBits[:len(hostBits)-2], ".")
+		lumber.Trace("[NANOBOX-ROUTER] Subdomain: '%s'", subdomain)
 	}
 
-	// if there is no subdomain, no need to worry about matching
-	if subdomain == "" {
-		return true
-	}
-	match := subdomain == r.SubDomain
+	match := strings.HasPrefix(subdomain, r.SubDomain)
 	lumber.Trace("[NANOBOX-ROUTER] Subdomain match? '%t'", match)
 	return match
 }
@@ -127,7 +155,6 @@ func subdomainMatch(requestHost string, r Route) bool {
 // domainMatch checks if the route has a domain and if the request matches
 func domainMatch(requestHost string, r Route) bool {
 	// if there is no domain, no need to worry about matching
-	// todo: this may be detrimental, same way checking `r.SubDomain == ""` would break things
 	if r.Domain == "" {
 		return true
 	}
@@ -135,6 +162,7 @@ func domainMatch(requestHost string, r Route) bool {
 	hostBits := strings.Split(requestHost, ".")
 	if len(hostBits) >= 2 {
 		domain = strings.Join(hostBits[len(hostBits)-2:], ".")
+		lumber.Trace("[NANOBOX-ROUTER] Domain: '%s'", domain)
 	}
 	match := domain == r.Domain
 	lumber.Trace("[NANOBOX-ROUTER] Domain match? '%t'", match)
@@ -154,8 +182,7 @@ func pathMatch(requestPath string, r Route) bool {
 		match = strings.HasPrefix(requestPath, r.Path)
 	case '*':
 		// check for prefix match
-		tpath := r.Path[:len(r.Path)-1]
-		match = strings.HasPrefix(requestPath, tpath)
+		match = strings.HasPrefix(requestPath, r.Path[:len(r.Path)-1])
 	default:
 		// check for exact match or exact match + "/"
 		match = (r.Path == requestPath) || strings.HasPrefix(requestPath, r.Path+"/")
