@@ -39,6 +39,16 @@ type Route struct {
 	FwdPath string   `json:"fwdpath"` // path to forward to targets - "/goadmin" incoming req: test.com/admin -> 127.0.0.1/goadmin (optional)
 	Page    string   `json:"page"`    // page to serve instead of routing to targets - "<HTML>We are fixing it</HTML>" (optional)
 
+	// defines health check
+	Endpoint       string `json:"endpoint"`        // url path to check for health (todo: what to do when fwdpath is set) (non blank enables health checks)
+	ExpectedCode   int    `json:"expected_code"`   // expected http response code (default 200)
+	ExpectedBody   string `json:"expected_body"`   // expected body
+	ExpectedHeader string `json:"expected_header"` // expected http header (field:value)
+	Host           string `json:"host"`            // 'host' header to use when performing health check
+	Timeout        int    `json:"timeout"`         // milliseconds before connection times out (default 3000 (3s))
+	Attempts       int    `json:"attempts"`        // number of times to try before marking dead
+	// Pulse          int    `json:"pulse"`           // seconds delay between health checks (default 60?)
+
 	// stored proxies
 	proxies []*proxy
 }
@@ -47,6 +57,7 @@ type Route struct {
 type proxy struct {
 	targetUrl    string                 // one of the Route's targets
 	fwdPath      string                 // customizable path to forward to target
+	healthy      bool                   // used for removing from balancing
 	prefixPath   string                 // prefix to subtract from request path when forwarding
 	reverseProxy *httputil.ReverseProxy // handler that forwards requests to another server, proxying their response back to the client
 	// ignoreCert   bool                   // ignore checking upstream cert (likely will be configurable later, but we trust the upstream)
@@ -58,13 +69,22 @@ var IgnoreUpstreamCerts bool
 // routes stores all registered Route objects
 var routes = []Route{}
 
-// mutex ensures updates to routes and certs are atomic
-var mutex = sync.Mutex{}
+// routesMutex ensures updates to routes are atomic
+var routesMutex = sync.RWMutex{}
 
 // UpdateRoutes replaces registered routes with a new set and initializes their
 // proxies, if needed
 func UpdateRoutes(newRoutes []Route) error {
 	for i := range newRoutes {
+		if newRoutes[i].ExpectedCode == 0 {
+			newRoutes[i].ExpectedCode = 200
+		}
+		if newRoutes[i].Timeout == 0 {
+			newRoutes[i].Timeout = 3000
+		}
+		if newRoutes[i].Attempts == 0 {
+			newRoutes[i].Attempts = 3
+		}
 		for _, tgt := range newRoutes[i].Targets {
 			prox := &proxy{targetUrl: tgt, fwdPath: newRoutes[i].FwdPath, prefixPath: newRoutes[i].Path}
 			err := prox.initProxy()
@@ -77,9 +97,9 @@ func UpdateRoutes(newRoutes []Route) error {
 		}
 	}
 
-	mutex.Lock()
+	routesMutex.Lock()
 	routes = newRoutes
-	mutex.Unlock()
+	routesMutex.Unlock()
 	lumber.Trace("[NANOBOX-ROUTER] Routes updated")
 	return nil
 }
@@ -97,6 +117,7 @@ func (self *proxy) initProxy() error {
 			return err
 		}
 		self.reverseProxy = NewSingleHostReverseProxy(uri, self.fwdPath, IgnoreUpstreamCerts, self.prefixPath)
+		self.healthy = true // assume newly added nodes are healthy
 		lumber.Trace("[NANOBOX-ROUTER] New proxy set")
 	}
 	return nil

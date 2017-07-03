@@ -60,15 +60,29 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			NoRoutes{}.ServeHTTP(rw, req)
 			return
 		}
+
+		var thisProxy *proxy
+		var unhealthyCounter int = 0
+
+	robinProxy:
 		// proxy the request (round-robin)
-		proxy := route.proxies[atomic.AddUint32(&robiner, 1)%uint32(len(route.proxies))]
+		thisProxy = route.proxies[atomic.AddUint32(&robiner, 1)%uint32(len(route.proxies))]
+		if !thisProxy.healthy {
+			// if we've tried all known endpoints, all unhealthy, return NoHealthy error
+			if unhealthyCounter >= len(route.proxies) {
+				NoHealthy{}.ServeHTTP(rw, req)
+				return
+			}
+			unhealthyCounter++
+			goto robinProxy
+		}
 
 		// todo: maybe? or just check target's scheme
 		if strings.ToLower(req.Header.Get("Upgrade")) == "websocket" {
 			lumber.Trace("[NANOBOX-ROUTER] Websocket detected...")
-			ServeWS(rw, req, proxy.reverseProxy)
+			ServeWS(rw, req, thisProxy.reverseProxy)
 		} else {
-			proxy.reverseProxy.ServeHTTP(rw, req)
+			thisProxy.reverseProxy.ServeHTTP(rw, req)
 		}
 		return
 	}
@@ -86,6 +100,8 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 func bestMatch(host, path string) (route *Route) {
 	lumber.Trace("[NANOBOX-ROUTER] Checking Request: '%v'...", host+path)
 	matchScore := 0
+
+	routesMutex.RLock()
 	for i := range routes {
 		lumber.Trace("[NANOBOX-ROUTER] Checking Route: '%v'", routes[i].SubDomain+"."+routes[i].Domain+routes[i].Path)
 		if subdomainMatch(host, routes[i]) && domainMatch(host, routes[i]) && pathMatch(path, routes[i]) {
@@ -115,9 +131,9 @@ func bestMatch(host, path string) (route *Route) {
 				route = &routes[i]
 				lumber.Trace("[NANOBOX-ROUTER] Matchscore: '%v'", matchScore)
 			}
-
 		}
 	}
+	routesMutex.RUnlock()
 
 	if route == nil {
 		hostParts := strings.Split(host, ".")
