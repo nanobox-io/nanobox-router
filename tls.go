@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/jcelliott/lumber"
 )
@@ -30,6 +31,9 @@ var tlsAddress = "0.0.0.0:443"
 
 // tlsListener is required for handling multiple certs
 var tlsListener net.Listener
+
+// certMutex ensures updates to certs are atomic
+var certMutex = sync.RWMutex{}
 
 // Start listening for secure connection.
 // The web server is split out from the much simpler form of
@@ -85,10 +89,10 @@ func UpdateCerts(newKeys []KeyPair) error {
 		}
 	}
 
-	mutex.Lock()
+	certMutex.Lock()
 	keys = newKeys
 	certificates = newCerts
-	mutex.Unlock()
+	certMutex.Unlock()
 	err := StartTLS(tlsAddress)
 	if err != nil {
 		// if failed due to address in use, retry, otherwise just fail
