@@ -89,7 +89,8 @@ func TestRoutes(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 	hdrs := <-headers
 
-	if hdrs.Get("X-Forwarded-Proto") != "" || hdrs.Get("X-Forwarded-For") != "127.0.0.1" {
+	// standard request, proto should be http
+	if hdrs.Get("X-Forwarded-Proto") != "http" || hdrs.Get("X-Forwarded-For") != "127.0.0.1" {
 		t.Errorf("Headers do not match expected! Proto: '%v' For: '%v'", hdrs.Get("X-Forwarded-Proto"), hdrs.Get("X-Forwarded-For"))
 	}
 }
