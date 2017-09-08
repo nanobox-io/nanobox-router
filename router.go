@@ -232,9 +232,10 @@ func ServeWS(rw http.ResponseWriter, req *http.Request, p *httputil.ReverseProxy
 	if !strings.Contains(outreq.URL.Host, ":") {
 		if outreq.URL.Scheme == "wss" || outreq.URL.Scheme == "https" {
 			outreq.URL.Host = fmt.Sprintf("%s:443", outreq.URL.Host)
-
+			// outreq.Header.Set("X-Forwarded-Proto", "wss") // todo: where these directly hit the ssl/non endpoint, is this necessary?
 		} else {
 			outreq.URL.Host = fmt.Sprintf("%s:80", outreq.URL.Host)
+			// outreq.Header.Set("X-Forwarded-Proto", "ws") // todo: where these directly hit the ssl/non endpoint, is this necessary?
 		}
 	}
 
