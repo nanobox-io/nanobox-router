@@ -37,6 +37,8 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if self.https {
 		lumber.Trace("[NANOBOX-ROUTER] Setting X-Forwarded-Proto")
 		req.Header.Set("X-Forwarded-Proto", "https")
+	} else {
+		req.Header.Set("X-Forwarded-Proto", "http")
 	}
 
 	// because net.SplitHostPort errors if no port
