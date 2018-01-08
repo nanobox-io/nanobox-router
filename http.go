@@ -29,7 +29,7 @@ func StartHTTP(address string) error {
 	}
 
 	httpServer = &http.Server{
-		Handler:      &handler{https:true},
+		Handler:      &handler{},
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
