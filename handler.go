@@ -24,6 +24,11 @@ type handler struct {
 	https bool
 }
 
+// because net.SplitHostPort errors if no port
+var re = regexp.MustCompile(`:\d+`) // used to remove the port from the host
+var host string
+
+
 // ServeHTTP finds a routing rule matching the incoming request and either serves
 // a predefined "page" or proxies the request (round-robin) to predefined
 // "targets". If a request doesn't match a routing rule (rules too specific) I
@@ -41,9 +46,7 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		req.Header.Set("X-Forwarded-Proto", "http")
 	}
 
-	// because net.SplitHostPort errors if no port
-	re := regexp.MustCompile(`:\d+`) // used to remove the port from the host
-	host := string(re.ReplaceAll([]byte(req.Host), nil))
+	host = string(re.ReplaceAll([]byte(req.Host), nil))
 
 	// find match
 	lumber.Trace("[NANOBOX-ROUTER] URL-----%+q", req.URL)
@@ -55,6 +58,7 @@ func (self handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		// serve page
 		if route.Page != "" {
 			rw.Write([]byte(route.Page))
+			req.Body.Close() // todo: try limiting memory consumption (GC slower than requests (>2k reqs/sec(DO 512 instance)))
 			return
 		}
 		// if proxies not established, respond with error

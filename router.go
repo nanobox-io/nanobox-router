@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jcelliott/lumber"
 )
@@ -158,6 +159,8 @@ func NewSingleHostReverseProxy(target *url.URL, fwdPath string, ignore bool, pre
 	// use DefaultTransport, determine and set InsecureSkipVerify accordingly
 	transport := http.DefaultTransport
 	transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: ignore}
+	transport.(*http.Transport).MaxIdleConns = 10
+	transport.(*http.Transport).IdleConnTimeout = 120 * time.Second
 
 	return &httputil.ReverseProxy{Director: director, Transport: transport}
 }
