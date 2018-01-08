@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jcelliott/lumber"
 )
@@ -32,8 +33,31 @@ var tlsAddress = "0.0.0.0:443"
 // tlsListener is required for handling multiple certs
 var tlsListener net.Listener
 
+// tlsServer allows for upfront setting of timeouts
+var tlsServer *http.Server
+
 // certMutex ensures updates to certs are atomic
 var certMutex = sync.RWMutex{}
+
+// tlsConfig defines the tls preferences
+var tlsConfig = &tls.Config{
+	PreferServerCipherSuites: true,
+	CurvePreferences:         []tls.CurveID{tls.CurveP256, tls.X25519, tls.CurveP384, tls.CurveP521},
+	// MinVersion: tls.VersionTLS12,
+	CipherSuites: []uint16{
+		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		// tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+		tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+		tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+		// tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
+		tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+	},
+	NextProtos: []string{"h2", "http/1.1"},
+}
 
 // Start listening for secure connection.
 // The web server is split out from the much simpler form of
@@ -47,34 +71,31 @@ func StartTLS(addr string) error {
 	if tlsListener != nil {
 		tlsListener.Close()
 	}
+	if tlsServer != nil {
+		// todo: or .Shutdown() and handle things
+		tlsServer.Close()
+	}
 	// start only if we have certificates registered
 	if len(certificates) > 0 {
-		config := &tls.Config{
-			Certificates:             certificates,
-			PreferServerCipherSuites: true,
-			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-			// MinVersion: tls.VersionTLS12,
-			CipherSuites: []uint16{
-				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-				// tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-				tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-				tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
-				// tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
-				tls.TLS_RSA_WITH_AES_128_CBC_SHA,
-			},
-		}
+		// update certificates
+		tlsConfig.Certificates = certificates
+
 		// support sni
-		config.BuildNameToCertificate()
-		tlsListener, err = tls.Listen("tcp", tlsAddress, config)
+		tlsConfig.BuildNameToCertificate()
+		tlsListener, err = tls.Listen("tcp", tlsAddress, tlsConfig)
 		if err != nil {
 			return err
 		}
 
-		go http.Serve(tlsListener, &handler{https: true})
+		tlsServer = &http.Server{
+			Handler:      &handler{https:true},
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  120 * time.Second,
+			TLSConfig:    tlsConfig,
+		}
+
+		go tlsServer.Serve(tlsListener)
 	}
 
 	return nil

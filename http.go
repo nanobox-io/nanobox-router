@@ -7,10 +7,14 @@ package router
 import (
 	"net"
 	"net/http"
+	"time"
 )
 
 // httpListener allows updates to routes
 var httpListener net.Listener
+
+// httpServer allows updates to routes
+var httpServer *http.Server
 
 // Start the Http Listener. Intentionally handles http requests the same way as
 // tls.
@@ -24,7 +28,15 @@ func StartHTTP(address string) error {
 		return err
 	}
 
-	go http.Serve(httpListener, &handler{})
+	httpServer = &http.Server{
+		Handler:      &handler{},
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+		TLSConfig:    tlsConfig,
+	}
+
+	go httpServer.Serve(httpListener)
 
 	return nil
 }
