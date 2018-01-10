@@ -46,8 +46,8 @@ type Route struct {
 	ExpectedBody   string `json:"expected_body"`   // expected body
 	ExpectedHeader string `json:"expected_header"` // expected http header (field:value)
 	Host           string `json:"host"`            // 'host' header to use when performing health check
-	Timeout        int    `json:"timeout"`         // milliseconds before connection times out (default 3000 (3s))
-	Attempts       int    `json:"attempts"`        // number of times to try before marking dead
+	Timeout        int    `json:"timeout"`         // milliseconds before connection times out (default 3000 (3s)) (health check)
+	Attempts       int    `json:"attempts"`        // number of times to try before marking dead (health check)
 	// Pulse          int    `json:"pulse"`           // seconds delay between health checks (default 60?)
 
 	// stored proxies
