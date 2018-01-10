@@ -88,7 +88,7 @@ func StartTLS(addr string) error {
 		}
 
 		tlsServer = &http.Server{
-			Handler:      &handler{https:true},
+			Handler:      &handler{https: true},
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 10 * time.Second,
 			IdleTimeout:  120 * time.Second,

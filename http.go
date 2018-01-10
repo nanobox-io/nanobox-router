@@ -23,17 +23,17 @@ func StartHTTP(address string) error {
 	if httpListener != nil {
 		httpListener.Close()
 	}
+
 	httpListener, err = net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
 
 	httpServer = &http.Server{
-		Handler:      &handler{},
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-		TLSConfig:    tlsConfig,
+		Handler:           &handler{},
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		TLSConfig:         tlsConfig,
 	}
 
 	go httpServer.Serve(httpListener)

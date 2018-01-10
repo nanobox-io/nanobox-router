@@ -28,7 +28,6 @@ type handler struct {
 var re = regexp.MustCompile(`:\d+`) // used to remove the port from the host
 var host string
 
-
 // ServeHTTP finds a routing rule matching the incoming request and either serves
 // a predefined "page" or proxies the request (round-robin) to predefined
 // "targets". If a request doesn't match a routing rule (rules too specific) I
