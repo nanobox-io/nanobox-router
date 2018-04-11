@@ -5,10 +5,14 @@
 package router
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"time"
 )
+
+// the default address to listen on for http connections
+var httpAddress = "0.0.0.0:80"
 
 // httpListener allows updates to routes
 var httpListener net.Listener
@@ -24,7 +28,14 @@ func StartHTTP(address string) error {
 		httpListener.Close()
 	}
 
-	httpListener, err = net.Listen("tcp", address)
+	if address != "" {
+		httpAddress = address
+	}
+	if httpAddress == "" {
+		return fmt.Errorf("HTTP address not defined")
+	}
+
+	httpListener, err = net.Listen("tcp", httpAddress)
 	if err != nil {
 		return err
 	}
