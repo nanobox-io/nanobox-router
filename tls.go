@@ -90,30 +90,30 @@ func StartTLS(addr string) error {
 		// todo: or .Shutdown() and handle things
 		tlsServer.Close()
 	}
-	// start only if we have certificates registered
-	if len(cfgCerts.Certificates) > 0 || defaultCert.Certificate != nil {
-		fmt.Println("Starting tls listener")
 
-		tlsListener, err = tls.Listen("tcp", tlsAddress, tlsConfig)
-		if err != nil {
-			return err
-		}
-
-		tlsServer = &http.Server{
-			Handler:           &handler{https: true},
-			ReadHeaderTimeout: 5 * time.Second,
-			IdleTimeout:       120 * time.Second,
-			TLSConfig:         tlsConfig,
-		}
-
-		go tlsServer.Serve(tlsListener)
+	tlsListener, err = tls.Listen("tcp", tlsAddress, tlsConfig)
+	if err != nil {
+		return err
 	}
+
+	tlsServer = &http.Server{
+		Handler:           &handler{https: true},
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		TLSConfig:         tlsConfig,
+	}
+
+	go tlsServer.Serve(tlsListener)
 
 	return nil
 }
 
 // SetDefaultCert sets the default cert.
 func SetDefaultCert(cert, key string) error {
+	if cert == "" || key == "" {
+		return fmt.Errorf("Default certificate cannot be empty")
+	}
+
 	c, err := tls.X509KeyPair([]byte(cert), []byte(key))
 	if err != nil {
 		return fmt.Errorf("Failed to create cert from provided info - %s", err.Error())
@@ -131,27 +131,35 @@ func SetDefaultCert(cert, key string) error {
 // secure web server
 func UpdateCerts(newKeys []KeyPair) error {
 	newCerts := []tls.Certificate{}
+	certs := []tls.Certificate{}
 	for _, newKey := range newKeys {
 		// create a Certificate from KeyPair
 		cert, err := tls.X509KeyPair([]byte(newKey.Cert), []byte(newKey.Key))
 		if err == nil {
 			newCerts = append(newCerts, cert)
 		} else {
-			lumber.Error("[NANOBOX-ROUTER] Failed to update certs - %v", err)
+			lumber.Error("[NANOBOX-ROUTER] Failed to update certs - %s", err.Error())
 			return err
 		}
 	}
 
 	// prepend default cert to slice
-	certs := append([]tls.Certificate{defaultCert}, newCerts...)
+	if defaultCert.Certificate != nil {
+		certs = append([]tls.Certificate{defaultCert}, newCerts...)
+	} else {
+		certs = newCerts
+	}
 
 	certMutex.Lock()
 	keys = newKeys
 	// update certificates
 	certificates = newCerts
 	cfgCerts.Certificates = certs
+
 	// support sni
-	cfgCerts.BuildNameToCertificate()
+	if len(cfgCerts.Certificates) > 0 {
+		cfgCerts.BuildNameToCertificate()
+	}
 	certMutex.Unlock()
 	lumber.Debug("[NANOBOX-ROUTER] Certs updated")
 	return nil

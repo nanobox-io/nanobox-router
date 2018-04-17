@@ -34,14 +34,14 @@ func TestMain(m *testing.M) {
 
 	err := router.StartHTTP(proxyHttp)
 	if err != nil {
-		fmt.Printf("Failed to start http - %v\n", err)
+		fmt.Printf("Failed to start http - %s\n", err.Error())
 		os.Exit(1)
 	}
 	fmt.Println("HTTP started")
 
 	err = router.StartTLS(proxyTls)
 	if err != nil {
-		fmt.Printf("Failed to start https - %v\n", err)
+		fmt.Printf("Failed to start https - %s\n", err.Error())
 		os.Exit(1)
 	}
 	fmt.Println("HTTPS started")
@@ -77,7 +77,7 @@ func TestRoutes(t *testing.T) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "http://"+proxyHttp, nil)
 	if err != nil {
-		t.Error("Failed test GET - %v", err)
+		t.Errorf("Failed test GET - %s", err.Error())
 		t.FailNow()
 	}
 	// set Host
@@ -106,6 +106,12 @@ func TestTls(t *testing.T) {
 	certs := []router.KeyPair{router.KeyPair{Key: "key", Cert: "cert"}}
 	router.UpdateCerts(certs)
 
+	err := router.SetDefaultCert(cert, key)
+	if err != nil {
+		t.Errorf("Failed to set def cert - %s", err.Error())
+		t.FailNow()
+	}
+
 	// configure a cert
 	certs = []router.KeyPair{router.KeyPair{Key: key, Cert: cert}}
 
@@ -116,14 +122,14 @@ func TestTls(t *testing.T) {
 	savedCerts := router.Keys()
 
 	if len(savedCerts) != 1 || savedCerts[0].Cert != cert {
-		t.Errorf("Failed to update certs - %v", savedCerts)
+		t.Errorf("Failed to update certs - %s", savedCerts)
 		t.FailNow()
 	}
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://"+proxyTls, nil)
 	if err != nil {
-		t.Error("Failed test GET - %v", err)
+		t.Errorf("Failed test GET - %s", err.Error())
 		t.FailNow()
 	}
 	// set Host
@@ -174,7 +180,7 @@ func TestHandler(t *testing.T) {
 	newReq := func(path string) *http.Request {
 		req, err := http.NewRequest("GET", "https://"+proxyTls+path, nil)
 		if err != nil {
-			t.Error("Failed to create Request - %v", err)
+			t.Errorf("Failed to create Request - %s", err.Error())
 			t.FailNow()
 		}
 		return req
@@ -184,12 +190,12 @@ func TestHandler(t *testing.T) {
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Error("Failed test GET - %v", err)
+			t.Errorf("Failed test GET - %s", err.Error())
 			t.FailNow()
 		}
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			t.Error("Failed to read Body - %v", err)
+			t.Errorf("Failed to read Body - %s", err.Error())
 			t.FailNow()
 		}
 
@@ -359,7 +365,7 @@ var oldProxyHttp = "127.0.0.1:8090"
 func TestDepProxy(t *testing.T) {
 	uri, err := url.Parse("http://" + fakeListen)
 	if err != nil {
-		t.Errorf("Failed to parse listen address", err)
+		t.Errorf("Failed to parse listen address - %s", err.Error())
 	}
 
 	oldProxy := router.NewReverseProxy(uri, "")
@@ -370,7 +376,7 @@ func TestDepProxy(t *testing.T) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "http://"+oldProxyHttp, nil)
 	if err != nil {
-		t.Error("Failed create GET - %v", err)
+		t.Errorf("Failed create GET - %s", err.Error())
 		t.FailNow()
 	}
 	// set Host
@@ -379,7 +385,7 @@ func TestDepProxy(t *testing.T) {
 	go func() {
 		_, err = client.Do(req)
 		if err != nil {
-			t.Error("Failed test GET - %v", err)
+			t.Errorf("Failed test GET - %s", err.Error())
 			t.FailNow()
 		}
 	}()
@@ -415,13 +421,13 @@ func TestWebsockets(t *testing.T) {
 	// dial proxy address (should proxy to endpoint)
 	ws, err := websocket.Dial("ws://"+proxyHttp+"/zecho", "", "http://localhost")
 	if err != nil {
-		t.Error("Failed ws DIAL - %v", err)
+		t.Errorf("Failed ws DIAL - %s", err.Error())
 		t.FailNow()
 	}
 
 	// write a message on the socket
 	if _, err := ws.Write([]byte("success!")); err != nil {
-		t.Error("Failed ws WRITE - %v", err)
+		t.Errorf("Failed ws WRITE - %s", err.Error())
 		t.FailNow()
 	}
 
@@ -429,7 +435,7 @@ func TestWebsockets(t *testing.T) {
 	var n int
 	// read the message from the socket
 	if n, err = ws.Read(msg); err != nil {
-		t.Error("Failed ws READ - %v", err)
+		t.Errorf("Failed ws READ - %s", err.Error())
 		t.FailNow()
 	}
 
