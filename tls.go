@@ -91,10 +91,8 @@ func StartTLS(addr string) error {
 		tlsServer.Close()
 	}
 	// start only if we have certificates registered
-	if len(certificates) > 0 {
+	if len(cfgCerts.Certificates) > 0 || defaultCert.Certificate != nil {
 		fmt.Println("Starting tls listener")
-		// update certificates
-		tlsConfig.Certificates = certificates
 
 		tlsListener, err = tls.Listen("tcp", tlsAddress, tlsConfig)
 		if err != nil {
@@ -121,8 +119,10 @@ func SetDefaultCert(cert, key string) error {
 		return fmt.Errorf("Failed to create cert from provided info - %s", err.Error())
 	}
 	defaultCert = c
+
 	certMutex.Lock()
-	certificates = append([]tls.Certificate{defaultCert}, certificates...)
+	cfgCerts.Certificates = append([]tls.Certificate{defaultCert}, certificates...)
+	cfgCerts.BuildNameToCertificate()
 	certMutex.Unlock()
 	return nil
 }
@@ -143,13 +143,13 @@ func UpdateCerts(newKeys []KeyPair) error {
 	}
 
 	// prepend default cert to slice
-	newCerts = append([]tls.Certificate{defaultCert}, newCerts...)
+	certs := append([]tls.Certificate{defaultCert}, newCerts...)
 
 	certMutex.Lock()
 	keys = newKeys
-	certificates = newCerts
 	// update certificates
-	cfgCerts.Certificates = certificates
+	certificates = newCerts
+	cfgCerts.Certificates = certs
 	// support sni
 	cfgCerts.BuildNameToCertificate()
 	certMutex.Unlock()
